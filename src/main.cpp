@@ -18,6 +18,22 @@
 TFT_eSPI tft = TFT_eSPI();
 XPT2046_Touchscreen ts(CS_PIN, TIRQ_PIN);  // Param 2 - Touch IRQ Pin - interrupt enabled polling
 
+
+
+
+
+
+        const int relay1 = 12;   // declare gpio here
+        const int relay2 = 13; 
+
+
+
+
+
+
+
+
+
 // Counter variable for disp
 static int counter = 0;
 
@@ -50,8 +66,41 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
 //puts on screen display for counter
 void update_counter_label() {
     static char buf[32];
-    snprintf(buf, sizeof(buf), "Count: %d", counter);
+    
+
+
+        pinMode(relay1, OUTPUT);
+    pinMode(relay2, OUTPUT);
+
+
+
+
+
+
+
+    // Turn on relay1
+    digitalWrite(relay1, HIGH);
+            snprintf(buf, sizeof(buf), "Relay1 on %d", counter);
+    delay(3000); // Keep relay1 on for 3 seconds
+    digitalWrite(relay1, LOW);
+
+    // Turn on relay2
+    digitalWrite(relay2, HIGH);
+            snprintf(buf, sizeof(buf), "Relay2 on %d", counter);
+    delay(3000); // Keep relay2 on for 3 seconds
+    digitalWrite(relay2, LOW);
+
+
+
+
+
+
+
     lv_label_set_text(counter_label, buf);
+
+
+
+
 }
 
 //button click will +1 to the 
@@ -61,6 +110,11 @@ void event_handler(lv_event_t *e) {
         counter++;
         Serial.println("Hello World");
         update_counter_label();
+
+
+
+
+
     }
 }
 
@@ -119,6 +173,9 @@ void setup() {
     indev_drv.type = LV_INDEV_TYPE_POINTER;
     indev_drv.read_cb = my_touchpad_read;
     lv_indev_drv_register(&indev_drv);
+
+
+
 
     // Run LVGL example
     lv_example();
