@@ -1,7 +1,3 @@
-//Generic TFT_eSPI@^2.5.43 use with lvgl(8.4) and xtp2046_touchscreen(alpha) with st7796 driver in Arduinoo framework on platformio
-//move .h files to respective lib/x path
-
-
 #include <XPT2046_Touchscreen.h>
 #include <lvgl.h>
 #include <TFT_eSPI.h>
@@ -18,27 +14,18 @@
 TFT_eSPI tft = TFT_eSPI();
 XPT2046_Touchscreen ts(CS_PIN, TIRQ_PIN);  // Param 2 - Touch IRQ Pin - interrupt enabled polling
 
+// Relay pin definitions
+const int relay1 = 12;
+const int relay2 = 13;
 
+// Label for relay status display
+lv_obj_t *relay_label;
 
-
-
-
-        const int relay1 = 12;   // declare gpio here
-        const int relay2 = 13; 
-
-
-
-
-
-
-
-
-
-// Counter variable for disp
-static int counter = 0;
-
-// Label for counter for display
-lv_obj_t *counter_label;
+// Relay control state
+enum RelayState {IDLE, RELAY1_ON, RELAY1_OFF, WAITING, RELAY2_ON, RELAY2_OFF};
+RelayState relayState = IDLE;
+unsigned long relayTimer = 0;
+const unsigned long relayDelay = 3000; // 3 seconds delay
 
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
     tft.startWrite();
@@ -63,63 +50,26 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
         data->state = LV_INDEV_STATE_REL;
     }
 }
-//puts on screen display for counter
-void update_counter_label() {
+
+// Function to update the relay status label
+void update_relay_label(const char* text) {
     static char buf[32];
-    
-
-
-        pinMode(relay1, OUTPUT);
-    pinMode(relay2, OUTPUT);
-
-
-
-
-
-
-
-    // Turn on relay1
-    digitalWrite(relay1, HIGH);
-            snprintf(buf, sizeof(buf), "Relay1 on %d", counter);
-    delay(3000); // Keep relay1 on for 3 seconds
-    digitalWrite(relay1, LOW);
-
-    // Turn on relay2
-    digitalWrite(relay2, HIGH);
-            snprintf(buf, sizeof(buf), "Relay2 on %d", counter);
-    delay(3000); // Keep relay2 on for 3 seconds
-    digitalWrite(relay2, LOW);
-
-
-
-
-
-
-
-    lv_label_set_text(counter_label, buf);
-
-
-
-
+    snprintf(buf, sizeof(buf), "%s", text);
+    lv_label_set_text(relay_label, buf);
 }
 
-//button click will +1 to the 
+// Button click event handler
 void event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        counter++;
-        Serial.println("Hello World");
-        update_counter_label();
-
-
-
-
-
+        Serial.println("Button Clicked");
+        relayState = RELAY1_ON;  // Start the relay sequence
+        relayTimer = millis();   // Reset the timer
     }
 }
 
 void lv_example(void) {
-    // bg color
+    // Set background color
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x003a57), LV_PART_MAIN);
 
     // Create a button
@@ -127,16 +77,16 @@ void lv_example(void) {
     lv_obj_align(btn, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn, event_handler, LV_EVENT_CLICKED, NULL);
 
-    // label on the button
+    // Create a label on the button
     lv_obj_t *label = lv_label_create(btn);
     lv_label_set_text(label, "Button");
     lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);  // Set text color to white
 
-    // added to have counter on dissplay, ensure event change tft
-    counter_label = lv_label_create(lv_scr_act());
-    lv_label_set_text(counter_label, "Count: 0");
-    lv_obj_set_style_text_color(counter_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);  // Set text color to white
-    lv_obj_align(counter_label, LV_ALIGN_CENTER, 0, -50);
+    // Create a label for displaying the relay status
+    relay_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(relay_label, "Relay Status");
+    lv_obj_set_style_text_color(relay_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN);  // Set text color to white
+    lv_obj_align(relay_label, LV_ALIGN_CENTER, 0, -50);
 }
 
 void setup() {
@@ -149,6 +99,12 @@ void setup() {
     // Initialize Touchscreen
     ts.begin();
     ts.setRotation(1); // Landscape mode
+
+    // Initialize relays
+    pinMode(relay1, OUTPUT);
+    pinMode(relay2, OUTPUT);
+    digitalWrite(relay1, LOW);
+    digitalWrite(relay2, LOW);
 
     // Initialize LVGL
     lv_init();
@@ -174,9 +130,6 @@ void setup() {
     indev_drv.read_cb = my_touchpad_read;
     lv_indev_drv_register(&indev_drv);
 
-
-
-
     // Run LVGL example
     lv_example();
 }
@@ -184,5 +137,46 @@ void setup() {
 void loop() {
     // Handle LVGL tasks
     lv_timer_handler();
-    delay(5);
+
+    // Handle relay control state machine
+    unsigned long currentMillis = millis();
+    switch (relayState) {
+        case RELAY1_ON:
+            digitalWrite(relay1, HIGH);
+            update_relay_label("Relay1 ON");
+            if (currentMillis - relayTimer >= relayDelay) {
+                // Turn off relay1
+                digitalWrite(relay1, LOW);
+                update_relay_label("Relay1 OFF");
+                // Wait before turning on relay2
+                relayState = WAITING;
+                relayTimer = currentMillis;
+            }
+            break;
+
+        case WAITING:
+            if (currentMillis - relayTimer >= relayDelay) {
+                // Start relay2
+                relayState = RELAY2_ON;
+                relayTimer = currentMillis;
+            }
+            break;
+
+        case RELAY2_ON:
+            digitalWrite(relay2, HIGH);
+            update_relay_label("Relay2 ON");
+            if (currentMillis - relayTimer >= relayDelay) {
+                // Turn off relay2
+                digitalWrite(relay2, LOW);
+                update_relay_label("Relay2 OFF");
+                relayState = IDLE;
+            }
+            break;
+
+        case IDLE:
+        default:
+            break;
+    }
+
+    delay(5);  // Small delay to prevent overwhelming the processor
 }
