@@ -3,21 +3,20 @@
 #define ST7796_DRIVER  // Enable ST7796 TFT driver
 
 // Define the pins used for the display
-#define TFT_CS   5  // Chip select control pin
-#define TFT_DC   2  // Data Command control pin
-#define TFT_RST  4  // Reset pin (could connect to Arduino RESET pin)
+#define TFT_CS   13  // Chip select control pin
+#define TFT_DC   14  // Data Command control pin
+#define TFT_RST  12  // Reset pin (could connect to Arduino RESET pin)
 
-// Define the pins for SPI communication
-#define TFT_SCLK 18  // Clock pin
-#define TFT_MOSI 23  // Data out pin
-#define TFT_MISO 19  // Data in pin (if needed)
+// Define the pins for ST_CLK
+#define TFT_MOSI 27  // T_DIN
+#define TFT_MISO 19  // T_DO
 
 // Optional: LED control pin
 #define TFT_BL   -1  // Set to -1 if not used
 
 // Touch screen pins
-#define TOUCH_CS 14  // Chip select pin for touch screen
-#define TOUCH_IRQ 25 // Touch screen IRQ pin
+#define TOUCH_CS 5  // Chip select pin for touch screen
+#define TOUCH_IRQ 26 // Touch screen IRQ pin
 
 // Define SPI settings
 #define SPI_FREQUENCY  27000000
@@ -38,18 +37,20 @@
 #define SPI_READ_FREQUENCY  20000000
 #define SPI_TOUCH_FREQUENCY  2500000
 
+
+
 //PINS TO THE BOARD, SOME SHARED
-// TIRQ 25
+// TIRQ 25 -> 26
 // T_DO 19
-// T_DIN 23
-// T_CS 14
+// T_DIN 23 -> 27
+// T_CS 14 -> 5
 // T_CLK 18
 // SDO(MISO) 19
 // LED 3.3
 // SCK 18
-// SDI(MISO) 23
-// DC/RS 2
-// RESET 4
-// CS 5
+// SDI(MISO) 23 -> 27
+// DC/RS 2 -> 26 -> 14
+// RESET 4 -> 27 -> 12
+// CS 5 -> 13
 // GND GROUND
 // VCC 5V
